@@ -538,7 +538,10 @@ pub async fn token(
             .await?;
 
             let twofactors: Vec<TwoFactor> = list_user_twofactors(&db, &user.id).await?;
-            let twofactor_ids = vec![TwoFactorType::Authenticator as i32];
+            let mut twofactor_ids: Vec<i32> = twofactors.iter().filter(|tf| tf.enabled && (tf.atype == TwoFactorType::Authenticator as i32 || tf.atype == TwoFactorType::YubiKey as i32)).map(|tf| tf.atype).collect();
+            if twofactor_ids.is_empty() {
+                twofactor_ids.push(TwoFactorType::Authenticator as i32);
+            }
             let mut should_issue_remember = false;
 
             if is_twofactor_enabled(&twofactors) {
@@ -574,6 +577,33 @@ pub async fn token(
                         .await
                         .map_err(|_| AppError::Database)?;
 
+                        should_issue_remember = payload.two_factor_remember == Some(1);
+                    }
+                    Some(TwoFactorType::YubiKey) => {
+                        // Failsafe: return error immediately if environment configuration is missing
+                        let _ = env.var("YUBICO_CLIENT_ID").map_err(|_| AppError::BadRequest("Administrator has not configured this feature".to_string()))?;
+
+                        let tf = twofactors.iter()
+                            .find(|tf| tf.enabled && tf.atype == TwoFactorType::YubiKey as i32)
+                            .ok_or_else(|| AppError::BadRequest("YubiKey is not configured".to_string()))?;
+
+                        let yubikey_code = payload.two_factor_token.as_deref()
+                            .ok_or_else(|| AppError::TwoFactorRequired(json_err_twofactor(&twofactor_ids)))?;
+
+                        if yubikey_code.len() != 44 {
+                            return Err(AppError::BadRequest("Invalid YubiKey OTP format".to_string()));
+                        }
+
+                        // Prevent probing with an unauthorized key
+                        let bound_devices: Vec<String> = serde_json::from_str(&tf.data).unwrap_or_default();
+                        let current_device_id = &yubikey_code[0..12];
+
+                        if !bound_devices.contains(&current_device_id.to_string()) {
+                            return Err(AppError::BadRequest("This YubiKey is not bound to the account".to_string()));
+                        }
+
+                        crate::yubico::verify_yubico_otp(&env, yubikey_code).await?;
+                    
                         should_issue_remember = payload.two_factor_remember == Some(1);
                     }
                     Some(TwoFactorType::Remember) => {

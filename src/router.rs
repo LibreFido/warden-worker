@@ -252,6 +252,15 @@ pub fn api_router(env: Env) -> Router {
             delete(twofactor::disable_authenticator),
         )
         .route(
+            "/api/two-factor/get-yubikey",
+            post(twofactor::get_yubikey),
+        )
+        .route(
+            "/api/two-factor/yubikey",
+            post(twofactor::activate_yubikey)
+            .put(twofactor::activate_yubikey),
+        )
+        .route(
             "/api/two-factor/disable",
             post(twofactor::disable_twofactor),
         )

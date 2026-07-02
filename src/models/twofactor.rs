@@ -122,3 +122,14 @@ pub struct DisableAuthenticatorData {
     #[serde(rename = "type")]
     pub r#type: i32,
 }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnableYubikeyData {
+    pub key1: Option<String>,
+    pub key2: Option<String>,
+    pub key3: Option<String>,
+    pub key4: Option<String>,
+    pub key5: Option<String>,
+    pub master_password_hash: Option<String>,
+}

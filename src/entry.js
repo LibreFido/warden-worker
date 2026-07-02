@@ -108,6 +108,8 @@ const HEAVY_DO_ROUTE_METHODS = new Map([
   // Two-factor
   ["/api/two-factor/get-authenticator", new Set(["POST"])],
   ["/api/two-factor/authenticator", new Set(["POST", "PUT", "DELETE"])],
+  ["/api/two-factor/get-yubikey", new Set(["POST"])],
+  ["/api/two-factor/yubikey", new Set(["POST", "PUT", "DELETE"])],
   ["/api/two-factor/disable", new Set(["POST", "PUT"])],
   ["/api/two-factor/get-recover", new Set(["POST"])],
 ]);
